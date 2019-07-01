@@ -3,6 +3,8 @@ import {View, Text, StyleSheet, TouchableOpacity, AsyncStorage, FlatList, Toucha
 import {Item, Input, Label} from 'native-base'
 import axios from 'axios'
 import {Navigation} from 'react-native-navigation'
+import KeyboardSpacer from 'react-native-keyboard-spacer';
+const moment = require('moment');
 
 const GLOBALS = require('../Globals')
 
@@ -22,15 +24,20 @@ export default class Main extends Component{
       message:"",
       deleteBtn:false,
       mainBtnText:"Send",
-      mainBtnaction: () => this.send()
-      
+      mainBtnaction: () => this.send(),
+      isSelected:false
     }
+    intervalId=0
   }
 
   componentDidMount(){
-    setInterval(() => {
-      this.fetchAll()
-    }, 1000);
+    this.intervalId = setInterval(() => {
+                        this.fetchAll()
+                      }, 2000);
+  }
+
+  componentWillUnmount(){
+    clearInterval(this.intervalId)
   }
 
   logout(){
@@ -54,7 +61,7 @@ export default class Main extends Component{
     }).then((res) => {
       
       this.setState({data:res.data.data, user:res.data.users})  
-    })
+    }).catch((err)=> alert(err.response.data.msg))
   }
   
   async send(){
@@ -70,10 +77,9 @@ export default class Main extends Component{
           'token':token
         }
       }).then((res) => {
-        alert('berhasil')
         this.setState({inputMessage:""})
       }).catch((err) => {
-        console.log(err);
+        alert(err.response.data.msg)
         
       })
     }
@@ -85,7 +91,8 @@ export default class Main extends Component{
       deleteBtn:true, 
       mainBtnText:"Edit", 
       mainBtnaction:()=>this.edit(),
-      inputMessage:msg
+      inputMessage:msg,
+      isSelected:true
     })
   }
   
@@ -102,7 +109,7 @@ export default class Main extends Component{
           alert('Pesan Berhasil dihapus')
           this.cancel()
           
-        }).catch((err)=>{alert(err)})
+        }).catch((err)=>alert(err.response.data.msg))
       }},
       
     ],)
@@ -122,7 +129,7 @@ export default class Main extends Component{
       alert('berhasil diubah')
       this.cancel();
     }).catch((err) => {
-      console.log(err);
+      alert(err.response.data.msg)
       
     })
   }
@@ -163,49 +170,52 @@ export default class Main extends Component{
   
   render(){
     return(
+      
       <View style={{flex:1}}>
-        <View style={styles.header}>
-          <View style={styles.logoWrapper}>
-            <TouchableOpacity onPress={()=> this.logout()}>
-              <View style={styles.logout}>
-                <Text>logout</Text>
+          <View style={styles.header}>
+            <View style={styles.logoWrapper}>
+              <TouchableOpacity onPress={()=> this.logout()}>
+                <View style={styles.logout}>
+                  <Text>logout</Text>
+                </View>
+              </TouchableOpacity>
+              <Text style={styles.logo}>Simple-Chat</Text>
+            </View>
+            {this._renderDeleteButton()}
+            
+          </View>
+          <View style={{flex:9}}>
+
+          <FlatList
+            inverted
+            data= {this.state.data}
+            keyExtractor={(item, index)=> {return index.toString()}}
+            renderItem={({item}) => (
+              <View style={{minWidth:300}} key={item.id} >
+
+              <TouchableHighlight onLongPress={()=>item.user_id==this.state.user.id ? this._toEdit(item.id, item.message): null} style={ item.user_id!=this.state.user.id ? styles.bubbleMsg : styles.ownBubbleMsg} key={item.id}>
+                <View  key={item.id} >
+                  <Text style={styles.user}>{item.user_id==this.state.user.id ? "Me": item.username}</Text>
+                  <Text style={styles.msg}>{item.message}</Text>
+                  <Text style={styles.time}>{moment(item.created_at).format('LT')}</Text>
+                </View>
+              </TouchableHighlight>
+              </View>
+            )}
+            />
+          </View>
+          <View>
+
+            <Item style={styles.wrapper}>
+              <Input placeholder="message..." value={this.state.inputMessage} onChangeText={(value) => this.setState({inputMessage:value})} multiline={true} />
+              <TouchableOpacity onPress={()=> this.state.mainBtnaction()}>
+              <View style={[styles.btnSend]}>
+                <Text style={styles.btnText}>{this.state.mainBtnText}</Text>
               </View>
             </TouchableOpacity>
-            <Text style={styles.logo}>Simple-Chat</Text>
+            </Item>
           </View>
-          {this._renderDeleteButton()}
-          
         </View>
-        <View style={{flex:9}}>
-
-        <FlatList
-          data= {this.state.data}
-          keyExtractor={(item, index)=> {return index.toString()}}
-          renderItem={({item}) => (
-            <View style={{minWidth:50}} key={item.id}>
-
-            <TouchableHighlight onLongPress={()=>item.user_id==this.state.user.id ? this._toEdit(item.id, item.message): null} style={ item.user_id!=this.state.user.id ? styles.bubbleMsg : styles.ownBubbleMsg} delayLongPress={3000} key={item.id}>
-              <View  key={item.id}>
-                <Text style={styles.user}>{item.username}</Text>
-                <Text style={styles.msg}>{item.message}</Text>
-              </View>
-            </TouchableHighlight>
-            </View>
-          )}
-          />
-        </View>
-        <View style={{flex:1}}>
-
-          <Item style={styles.wrapper}>
-            <Input placeholder="type message" value={this.state.inputMessage} onChangeText={(value) => this.setState({inputMessage:value})} />
-            <TouchableOpacity onPress={()=> this.state.mainBtnaction()}>
-            <View style={[styles.btnSend]}>
-              <Text style={styles.btnText}>{this.state.mainBtnText}</Text>
-            </View>
-          </TouchableOpacity>
-          </Item>
-        </View>
-      </View>
     )
   }
 }
@@ -215,25 +225,27 @@ export default class Main extends Component{
 const styles = StyleSheet.create({
   bubbleMsg: {
     borderBottomLeftRadius: 0,
+    justifyContent:"flex-start",
     backgroundColor:"#0FA",
-    marginTop: 10,
-    width:'50%',
+    marginVertical: 5,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 20,
     marginHorizontal: 10,
     paddingHorizontal: 10,
+    marginRight: 'auto',
+    minWidth:100
   },
   ownBubbleMsg: {
     backgroundColor:"#AAA",
-    marginTop: 10,
-    width:'50%',
+    marginVertical: 5,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 20,
     borderBottomRightRadius: 0,
     marginHorizontal: 10,
     justifyContent:'flex-end',
     marginLeft: 'auto',
     paddingHorizontal: 10,
+    minWidth:100
   },
   wrapper:{
     paddingHorizontal:10,
@@ -266,10 +278,10 @@ const styles = StyleSheet.create({
     borderRadius:5,
   },
   header:{
-    flex:1, 
     flexDirection:"row", 
     justifyContent:"space-between", 
     paddingHorizontal:10,
+    paddingVertical:10,
     backgroundColor:"#DDD",
     borderBottomWidth: 0.5,
     borderBottomColor: "#AAA",
@@ -280,6 +292,12 @@ const styles = StyleSheet.create({
   },
   msg:{
     fontSize:13
+  },
+  time:{
+    fontSize:10,
+    textAlign:"right",
+    color:"#08F",
+    marginTop:10
   },
   wrapperHeader:{
     justifyContent:"center"

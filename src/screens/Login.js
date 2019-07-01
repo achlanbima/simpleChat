@@ -3,6 +3,7 @@ import {View, Text, StyleSheet, TouchableOpacity, AsyncStorage} from 'react-nati
 import {Item, Input, Label} from 'native-base'
 import axios from 'axios'
 import {Navigation} from 'react-native-navigation'
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons'
 
 const GLOBALS = require('../Globals')
 
@@ -14,7 +15,8 @@ export default class Login extends Component{
     super(props)
     this.state = {
       inputEmail:"",
-      inputPassword:""
+      inputPassword:"",
+      passwordShow:true
     }
   }
 
@@ -26,7 +28,6 @@ export default class Login extends Component{
     try{
       await AsyncStorage.removeItem('@token')
     }catch(err){
-      alert(err)
     }
   }
 
@@ -43,21 +44,17 @@ export default class Login extends Component{
         password:this.state.inputPassword
         
       }).then((res) => {
-        if(res.data==""){
-          
-          alert("user tidak terdaftar")
-        }
-        if(res.data.status == false){
-          alert("password salah");
-          
-        }
         
         AsyncStorage.setItem('@token', res.data.token).then((res) => {
           this.goToHome() 
         })
-      }).catch((err) => console.log(err))
+      }).catch((err) => alert(err.response.data.msg))
     }
       
+  }
+
+  changePasswordVisible(){
+    this.setState({passwordShow: !this.state.passwordShow})
   }
 
   goToHome(){
@@ -75,13 +72,14 @@ export default class Login extends Component{
       <View style={styles.main}>
         <View style={styles.container}>
           <Text style={styles.logo}>Simple-Chat</Text>
-          <Item floatingLabel style={styles.wrapper}>
-            <Label>email</Label>
-            <Input value={this.state.inputEmail} onChangeText={(value) => this.setState({inputEmail: value})} />
+          <Item style={styles.wrapper}>
+            <Input placeholder="email" placeholderTextColor="#AAA" value={this.state.inputEmail} onChangeText={(value) => this.setState({inputEmail: value})} />
           </Item>
-          <Item floatingLabel style={styles.wrapper}>
-            <Label>password</Label>
-            <Input secureTextEntry={true}  value={this.state.inputPassword} onChangeText={(value) => this.setState({inputPassword: value})} />
+          <Item style={styles.wrapper}>
+            <Input placeholder="password" placeholderTextColor="#AAA" secureTextEntry={this.state.passwordShow}  value={this.state.inputPassword} onChangeText={(value) => this.setState({inputPassword: value})} />
+            <TouchableOpacity onPress={() => this.changePasswordVisible()}>
+                {this.state.passwordShow ? (<MaterialIcons name="visibility-off" size={20} color="#000"/>) : (<MaterialIcons name="visibility" size={20} color="#000"/>)}
+            </TouchableOpacity>
           </Item>
           <TouchableOpacity onPress={()=> this.login()} >
             <View style={[styles.wrapper, styles.btnLogin]}>
@@ -115,12 +113,13 @@ const styles = StyleSheet.create({
     marginTop:10
   },
   btnLogin:{
-    backgroundColor:"#3F3",
+    backgroundColor:"#3A3",
     paddingVertical: 10,
     borderRadius: 5,
   },
   btnText:{
     fontSize:20,
     alignSelf: 'center',
+    color:"#FFF"
   }
 })
